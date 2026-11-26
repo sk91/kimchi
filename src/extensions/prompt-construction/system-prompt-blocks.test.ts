@@ -52,7 +52,7 @@ function prompt(pi?: ExtensionAPI & { sessionId?: string }): string {
 	return buildSystemPrompt({
 		tools: testTools,
 		env: testEnv,
-		contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+		contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 		mode: "single",
 		sessionId: pi?.sessionId ?? TEST_SESSION_ID,
 	})
@@ -62,7 +62,7 @@ function idlePrompt(): string {
 	return buildSystemPrompt({
 		tools: testTools,
 		env: testEnv,
-		contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+		contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 		mode: "single",
 	})
 }
@@ -184,7 +184,7 @@ describe("system prompt blocks", () => {
 		const result = buildSystemPrompt({
 			tools: testTools,
 			env: testEnv,
-			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 			skills: [
 				{
 					name: "deploy",
