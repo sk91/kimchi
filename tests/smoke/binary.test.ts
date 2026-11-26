@@ -120,6 +120,26 @@ describe("binary smoke tests", () => {
 		expect(result.stdout + result.stderr).not.toContain("not implemented yet on this branch")
 	})
 
+	it("--agent-dir does not get rejected by pi's own unknown-flag validation", () => {
+		// --agent-dir is a pure kimchi invention (consumed in entry.ts's raw-argv
+		// scan, before any extension or pi code loads) with no upstream pi
+		// recognition and no pi.registerFlag() call anywhere — unlike
+		// --mcp-config/--permissions-config/--no-auto-update, which register with
+		// pi via their owning extension. Once a real session starts,
+		// createAgentSessionServices() validates every flag pi didn't itself parse
+		// against the set registered via pi.registerFlag() and rejects anything
+		// else with "Unknown option: --agent-dir" — reproducible regardless of
+		// the agent dir's contents.
+		const agentDir = mkdtempSync(join(tmpdir(), "kimchi-smoke-agent-dir-"))
+		const result = runBinary({
+			args: ["--agent-dir", agentDir, "-p", "hello"],
+			extraEnv: { KIMCHI_API_KEY: "smoke-test-dummy" },
+			throwOnError: false,
+			timeoutMs: 25_000,
+		})
+		expect(result.stdout + result.stderr).not.toContain("Unknown option")
+	})
+
 	it("-r with an id is treated as a session selector", () => {
 		const missingSessionId = "019f1780-8034-7435-85aa-3e86037676ee"
 		const result = runBinary({
