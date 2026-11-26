@@ -46,6 +46,15 @@ describe("value-flag parsing", () => {
 		populateCliArgs([])
 		expect(getParsedCliArgs().options.models).toBeUndefined()
 	})
+
+	it("backfills permissions-config/mcp-config from --launch-overlay end to end", () => {
+		populateCliArgs(["--launch-overlay", '{"permissions":{"defaultMode":"default"},"mcp":{"mcpServers":{}}}'])
+		expect(getParsedCliArgs().options["permissions-config"]).toBeDefined()
+		expect(getParsedCliArgs().options["mcp-config"]).toBeDefined()
+		populateCliArgs([])
+		expect(getParsedCliArgs().options["permissions-config"]).toBeUndefined()
+		expect(getParsedCliArgs().options["mcp-config"]).toBeUndefined()
+	})
 })
 
 describe("getCliModeArg", () => {
