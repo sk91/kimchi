@@ -13,11 +13,17 @@
  * loaded standalone. `.local.md` files are intended for user-specific,
  * gitignored overrides.
  *
+ * The agent dir's `context/` subdirectory is scanned separately and isn't
+ * subject to the first-match-wins rule: every `*.md` file in it becomes its
+ * own global-tier {@link ContextFile}, labeled by filename stem, so an
+ * orchestrator can hand the model several independently-named documents
+ * (e.g. `context/role.md`, `context/culture.md`).
+ *
  * Files are returned in root → cwd order (ancestors first).
  */
 
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, realpathSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { getAgentDir } from "@earendil-works/pi-coding-agent"
@@ -30,6 +36,11 @@ export interface ContextFile {
 	path: string
 	content: string
 	tier: ContextFileTier
+	/** For files discovered under the agent dir's `context/` directory: the
+	 *  filename stem (e.g. "role" for "role.md"). A deliberate, orchestrator-chosen
+	 *  tag, not incidental path structure, so it's safe to show the model directly
+	 *  instead of hashing it like {@link contextFileLabel} does for AGENTS.md/CLAUDE.md. */
+	label?: string
 }
 
 /** First 8 hex chars of a SHA-256 of `value` — enough to disambiguate
@@ -47,10 +58,16 @@ function shortHash(value: string): string {
  */
 export function contextFileLabel(file: ContextFile): string {
 	const tierLabel = file.tier === "global" ? "Global" : "Project"
+	if (file.label) return `${tierLabel}: ${file.label}`
 	return `${tierLabel} (${shortHash(file.path)})`
 }
 
 const CONTEXT_FILE_NAMES = ["AGENTS.md", "CLAUDE.md"]
+
+/** Subdirectory of the agent dir scanned for additional named context files
+ *  (e.g. `context/role.md`, `context/culture.md`). Unlike AGENTS.md/CLAUDE.md,
+ *  these support more than one file per tier. */
+const CONTEXT_SUBDIR_NAME = "context"
 
 function tryReadFile(filePath: string): string | null {
 	if (!existsSync(filePath)) return null
@@ -120,6 +137,38 @@ export function loadProjectContextFiles(cwd: string, alreadyLoaded: readonly Con
 	return files
 }
 
+/**
+ * Scan `<agentDir>/context/*.md` for additional named context files, one
+ * {@link ContextFile} per file, labeled by filename stem (e.g. "role" for
+ * "role.md"). Unlike AGENTS.md/CLAUDE.md, this supports any number of files.
+ * Returns them sorted by filename for a deterministic prompt order.
+ */
+function loadContextDirectoryFiles(agentDir: string): ContextFile[] {
+	const contextDir = join(agentDir, CONTEXT_SUBDIR_NAME)
+	let entries: string[]
+	try {
+		// A symlinked file (e.g. a culture.md shared across seats, pointing at one
+		// canonical path) reports as isSymbolicLink(), not isFile() — readdir's
+		// Dirent type reflects the directory entry itself, never the link target.
+		// tryReadFile below already handles a broken link or a symlink-to-directory.
+		entries = readdirSync(contextDir, { withFileTypes: true })
+			.filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith(".md"))
+			.map((entry) => entry.name)
+			.sort()
+	} catch {
+		return []
+	}
+
+	const files: ContextFile[] = []
+	for (const name of entries) {
+		const filePath = join(contextDir, name)
+		const content = tryReadFile(filePath)
+		if (content === null) continue
+		files.push({ path: filePath, content, tier: "global", label: name.slice(0, -".md".length) })
+	}
+	return files
+}
+
 export interface GlobalContextFileOptions {
 	includeClaudeCodeInstructions: boolean
 }
@@ -180,6 +229,10 @@ function readGlobalContextFiles(options: GlobalContextFileOptions): { files: Con
 		files.push({ path: localPath, content: local, tier: "global" })
 		sources.push({ path: localPath, content: local, tier: "global" })
 	}
+
+	const contextDirFiles = loadContextDirectoryFiles(dir)
+	files.push(...contextDirFiles)
+	sources.push(...contextDirFiles)
 	return { files, sources }
 }
 

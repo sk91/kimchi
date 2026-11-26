@@ -267,6 +267,65 @@ describe("loadGlobalContextFiles", () => {
 		symlinkSync(join(FAKE_CLAUDE_DIR, "missing.md"), join(FAKE_CLAUDE_DIR, "CLAUDE.md"))
 		expect(loadGlobalContextFiles(on)).toEqual([])
 	})
+
+	it("loads each *.md file under the agent dir's context/ directory as its own file, labeled by stem", () => {
+		mkdirSync(join(FAKE_AGENT_DIR, "context"), { recursive: true })
+		writeFileSync(join(FAKE_AGENT_DIR, "context", "role.md"), "role content")
+		writeFileSync(join(FAKE_AGENT_DIR, "context", "culture.md"), "culture content")
+		const result = loadGlobalContextFiles(on)
+		expect(result).toEqual([
+			{
+				path: join(FAKE_AGENT_DIR, "context", "culture.md"),
+				content: "culture content",
+				tier: "global",
+				label: "culture",
+			},
+			{ path: join(FAKE_AGENT_DIR, "context", "role.md"), content: "role content", tier: "global", label: "role" },
+		])
+	})
+
+	it("ignores non-.md files and subdirectories inside context/", () => {
+		mkdirSync(join(FAKE_AGENT_DIR, "context", "nested"), { recursive: true })
+		writeFileSync(join(FAKE_AGENT_DIR, "context", "notes.txt"), "ignored")
+		writeFileSync(join(FAKE_AGENT_DIR, "context", "nested", "inner.md"), "ignored too")
+		expect(loadGlobalContextFiles(on)).toEqual([])
+	})
+
+	it("combines AGENTS.md with context/ files, AGENTS.md first", () => {
+		writeFileSync(join(FAKE_AGENT_DIR, "AGENTS.md"), "global rules")
+		mkdirSync(join(FAKE_AGENT_DIR, "context"), { recursive: true })
+		writeFileSync(join(FAKE_AGENT_DIR, "context", "role.md"), "role content")
+		expect(loadGlobalContextFiles(on).map((f) => ({ content: f.content, label: f.label }))).toEqual([
+			{ content: "global rules", label: undefined },
+			{ content: "role content", label: "role" },
+		])
+	})
+
+	it("returns empty array when the context/ directory doesn't exist", () => {
+		expect(loadGlobalContextFiles(on)).toEqual([])
+	})
+
+	it("follows a symlinked context file (e.g. a culture.md shared across seats)", () => {
+		const canonical = join(tmpBase, "canonical-culture.md")
+		mkdirSync(tmpBase, { recursive: true })
+		writeFileSync(canonical, "shared culture content")
+		mkdirSync(join(FAKE_AGENT_DIR, "context"), { recursive: true })
+		symlinkSync(canonical, join(FAKE_AGENT_DIR, "context", "culture.md"))
+		expect(loadGlobalContextFiles(on)).toEqual([
+			{
+				path: join(FAKE_AGENT_DIR, "context", "culture.md"),
+				content: "shared culture content",
+				tier: "global",
+				label: "culture",
+			},
+		])
+	})
+
+	it("skips a broken symlink inside context/", () => {
+		mkdirSync(join(FAKE_AGENT_DIR, "context"), { recursive: true })
+		symlinkSync(join(FAKE_AGENT_DIR, "context", "missing.md"), join(FAKE_AGENT_DIR, "context", "culture.md"))
+		expect(loadGlobalContextFiles(on)).toEqual([])
+	})
 })
 
 describe("loadProjectContextFiles with already loaded global files", () => {
