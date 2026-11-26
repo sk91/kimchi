@@ -12,7 +12,29 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
 	return { ...actual, getAgentDir: () => FAKE_AGENT_DIR }
 })
 
-import { loadContextFiles, loadGlobalContextFiles, loadProjectContextFiles } from "./context-files.js"
+import { contextFileLabel, loadContextFiles, loadGlobalContextFiles, loadProjectContextFiles } from "./context-files.js"
+
+describe("contextFileLabel", () => {
+	it("labels by tier plus an 8-hex-char hash of the path, never the path itself", () => {
+		const label = contextFileLabel({ path: "/home/alice/project/AGENTS.md", content: "x", tier: "project" })
+		expect(label).toMatch(/^Project \([0-9a-f]{8}\)$/)
+		expect(label).not.toContain("/home/alice")
+		expect(label).not.toContain("AGENTS.md")
+	})
+
+	it("gives different paths different hashes, same path the same hash", () => {
+		const a = contextFileLabel({ path: "/a/AGENTS.md", content: "x", tier: "global" })
+		const b = contextFileLabel({ path: "/b/AGENTS.md", content: "x", tier: "global" })
+		const aAgain = contextFileLabel({ path: "/a/AGENTS.md", content: "different content", tier: "global" })
+		expect(a).not.toBe(b)
+		expect(a).toBe(aAgain)
+	})
+
+	it("uses the tier to pick the label prefix", () => {
+		expect(contextFileLabel({ path: "/x", content: "", tier: "global" })).toMatch(/^Global /)
+		expect(contextFileLabel({ path: "/x", content: "", tier: "project" })).toMatch(/^Project /)
+	})
+})
 
 describe("loadProjectContextFiles", () => {
 	beforeEach(() => {
@@ -175,7 +197,9 @@ describe("loadGlobalContextFiles", () => {
 
 	it("loads CLAUDE.md from the Claude Code config dir", () => {
 		writeFileSync(join(FAKE_CLAUDE_DIR, "CLAUDE.md"), "claude rules")
-		expect(loadGlobalContextFiles(on)).toEqual([{ path: join(FAKE_CLAUDE_DIR, "CLAUDE.md"), content: "claude rules" }])
+		expect(loadGlobalContextFiles(on)).toEqual([
+			{ path: join(FAKE_CLAUDE_DIR, "CLAUDE.md"), content: "claude rules", tier: "global" },
+		])
 	})
 
 	it("puts Claude Code CLAUDE.md before kimchi AGENTS.md", () => {
@@ -199,7 +223,11 @@ describe("loadGlobalContextFiles", () => {
 		mkdirSync(homeClaude, { recursive: true })
 		writeFileSync(join(homeClaude, "CLAUDE.md"), "home claude")
 		try {
-			expect(loadGlobalContextFiles(on)[0]).toEqual({ path: join(homeClaude, "CLAUDE.md"), content: "home claude" })
+			expect(loadGlobalContextFiles(on)[0]).toEqual({
+				path: join(homeClaude, "CLAUDE.md"),
+				content: "home claude",
+				tier: "global",
+			})
 		} finally {
 			rmSync(homeClaude, { recursive: true, force: true })
 		}
@@ -213,7 +241,9 @@ describe("loadGlobalContextFiles", () => {
 	it("loads once when AGENTS.md is a symlink to Claude Code CLAUDE.md", () => {
 		writeFileSync(join(FAKE_CLAUDE_DIR, "CLAUDE.md"), "shared")
 		symlinkSync(join(FAKE_CLAUDE_DIR, "CLAUDE.md"), join(FAKE_AGENT_DIR, "AGENTS.md"))
-		expect(loadGlobalContextFiles(on)).toEqual([{ path: join(FAKE_AGENT_DIR, "AGENTS.md"), content: "shared" }])
+		expect(loadGlobalContextFiles(on)).toEqual([
+			{ path: join(FAKE_AGENT_DIR, "AGENTS.md"), content: "shared", tier: "global" },
+		])
 	})
 
 	it("loads once when both files hold the same text apart from trailing whitespace", () => {
@@ -242,7 +272,7 @@ describe("loadGlobalContextFiles", () => {
 describe("loadProjectContextFiles with already loaded global files", () => {
 	const globalDir = join(tmpdir(), `kimchi-dedup-global-${Date.now()}`)
 	const globalPath = join(globalDir, "CLAUDE.md")
-	const globals = [{ path: globalPath, content: "global rules\n" }]
+	const globals = [{ path: globalPath, content: "global rules\n", tier: "global" as const }]
 	const inTmp = (files: { path: string }[]) => files.filter((f) => f.path.startsWith(tmpBase))
 
 	beforeEach(() => {
@@ -272,7 +302,7 @@ describe("loadProjectContextFiles with already loaded global files", () => {
 		symlinkSync(globalPath, join(nested, "AGENTS.md"))
 		writeFileSync(join(nested, "AGENTS.local.md"), "my overrides")
 		expect(inTmp(loadProjectContextFiles(nested, globals))).toEqual([
-			{ path: join(nested, "AGENTS.local.md"), content: "my overrides" },
+			{ path: join(nested, "AGENTS.local.md"), content: "my overrides", tier: "project" },
 		])
 	})
 
@@ -285,14 +315,14 @@ describe("loadProjectContextFiles with already loaded global files", () => {
 	it("keeps project files that differ from the global files", () => {
 		writeFileSync(join(nested, "AGENTS.md"), "project rules")
 		expect(inTmp(loadProjectContextFiles(nested, globals))).toEqual([
-			{ path: join(nested, "AGENTS.md"), content: "project rules" },
+			{ path: join(nested, "AGENTS.md"), content: "project rules", tier: "project" },
 		])
 	})
 
 	it("loads a duplicate when no global files are given", () => {
 		symlinkSync(globalPath, join(nested, "AGENTS.md"))
 		expect(inTmp(loadProjectContextFiles(nested))).toEqual([
-			{ path: join(nested, "AGENTS.md"), content: "global rules\n" },
+			{ path: join(nested, "AGENTS.md"), content: "global rules\n", tier: "project" },
 		])
 	})
 })
@@ -321,7 +351,11 @@ describe("loadContextFiles with a global AGENTS.local.md", () => {
 		rmSync(tmpBase, { recursive: true, force: true })
 	})
 
-	const mergedGlobal = { path: globalAgents, content: "shared rules\n\n\nglobal local override\n" }
+	const mergedGlobal = {
+		path: globalAgents,
+		content: "shared rules\n\n\nglobal local override\n",
+		tier: "global" as const,
+	}
 
 	it("skips a project copy of the global AGENTS.md", () => {
 		writeFileSync(join(nested, "AGENTS.md"), "shared rules")
@@ -336,6 +370,9 @@ describe("loadContextFiles with a global AGENTS.local.md", () => {
 	it("keeps the project AGENTS.local.md of a skipped copy", () => {
 		writeFileSync(join(nested, "AGENTS.md"), "shared rules")
 		writeFileSync(join(nested, "AGENTS.local.md"), "project local override")
-		expect(load()).toEqual([mergedGlobal, { path: join(nested, "AGENTS.local.md"), content: "project local override" }])
+		expect(load()).toEqual([
+			mergedGlobal,
+			{ path: join(nested, "AGENTS.local.md"), content: "project local override", tier: "project" },
+		])
 	})
 })

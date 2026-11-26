@@ -2,7 +2,7 @@
  * prompts.ts — System prompt builder for agents.
  */
 
-import type { ContextFile } from "../../prompt-construction/context-files.js"
+import { type ContextFile, contextFileLabel } from "../../prompt-construction/context-files.js"
 import { hasUserLoop } from "../../prompt-construction/session-user-loop.js"
 import {
 	buildCoreGuidelinesSections,
@@ -189,8 +189,8 @@ function stripInheritedContextSections(prompt: string): string {
 
 function buildContextBlock(contextFiles?: ContextFile[]): string | undefined {
 	if (!contextFiles || contextFiles.length === 0) return undefined
-	const combined = contextFiles.map((f) => shiftHeadings(f.content)).join("\n\n")
-	return `## Project Guidelines\n\n${combined}`
+	const sections = contextFiles.map((f) => `### ${contextFileLabel(f)}\n\n${shiftHeadings(f.content)}`).join("\n\n")
+	return `## Project Guidelines\n\n${sections}`
 }
 
 /** Fallback base prompt when parent system prompt is unavailable in append mode. */

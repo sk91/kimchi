@@ -16,14 +16,38 @@
  * Files are returned in root → cwd order (ancestors first).
  */
 
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { getAgentDir } from "@earendil-works/pi-coding-agent"
 
+/** Which discovery pass produced a {@link ContextFile} — the global agent dir
+ *  (+ the Claude Code instructions file) vs. the cwd-to-root project walk. */
+export type ContextFileTier = "global" | "project"
+
 export interface ContextFile {
 	path: string
 	content: string
+	tier: ContextFileTier
+}
+
+/** First 8 hex chars of a SHA-256 of `value` — enough to disambiguate
+ *  same-tier files from different directories without exposing the path
+ *  itself (home directory, project names) in a label the model reads. */
+function shortHash(value: string): string {
+	return createHash("sha256").update(value).digest("hex").slice(0, 8)
+}
+
+/**
+ * Label for a {@link ContextFile}'s own rendered section, e.g.
+ * `"Global (a3f9c21b)"` or `"Project (5e21ffd0)"`. The hash disambiguates
+ * multiple same-tier files (several project-ancestor directories) without
+ * leaking the path itself into the model's context.
+ */
+export function contextFileLabel(file: ContextFile): string {
+	const tierLabel = file.tier === "global" ? "Global" : "Project"
+	return `${tierLabel} (${shortHash(file.path)})`
 }
 
 const CONTEXT_FILE_NAMES = ["AGENTS.md", "CLAUDE.md"]
@@ -58,13 +82,13 @@ function loadContextFileFromDir(dir: string, alreadyLoaded: readonly ContextFile
 		if (primary !== null) {
 			// Check before the merge so .local.md survives. The duplicate still claims the dir.
 			if (isAlreadyLoaded(filePath, primary, alreadyLoaded)) {
-				return local !== null ? { path: localPath, content: local } : null
+				return local !== null ? { path: localPath, content: local, tier: "project" } : null
 			}
 			const content = local !== null ? `${primary}\n\n${local}` : primary
-			return { path: filePath, content }
+			return { path: filePath, content, tier: "project" }
 		}
 		if (local !== null) {
-			return { path: localPath, content: local }
+			return { path: localPath, content: local, tier: "project" }
 		}
 	}
 	return null
@@ -141,7 +165,7 @@ function readGlobalContextFiles(options: GlobalContextFileOptions): { files: Con
 			agentsPath !== undefined &&
 			agentsPrimary !== null &&
 			(sameRealPath(claudePath, agentsPath) || claude.trim() === agentsPrimary.trim())
-		if (claude !== null && !duplicate) files.push({ path: claudePath, content: claude })
+		if (claude !== null && !duplicate) files.push({ path: claudePath, content: claude, tier: "global" })
 	}
 
 	const sources = [...files]
@@ -150,11 +174,11 @@ function readGlobalContextFiles(options: GlobalContextFileOptions): { files: Con
 	const local = tryReadFile(localPath)
 	if (agentsPrimary !== null) {
 		const content = local !== null ? `${agentsPrimary}\n\n${local}` : agentsPrimary
-		files.push({ path: agentsPath, content })
-		sources.push({ path: agentsPath, content: agentsPrimary })
+		files.push({ path: agentsPath, content, tier: "global" })
+		sources.push({ path: agentsPath, content: agentsPrimary, tier: "global" })
 	} else if (local !== null) {
-		files.push({ path: localPath, content: local })
-		sources.push({ path: localPath, content: local })
+		files.push({ path: localPath, content: local, tier: "global" })
+		sources.push({ path: localPath, content: local, tier: "global" })
 	}
 	return { files, sources }
 }

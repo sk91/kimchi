@@ -368,7 +368,9 @@ describe("buildSystemPrompt", () => {
 		})
 
 		it("injects project context files", () => {
-			const contextFiles = [{ path: "/repo/AGENTS.md", content: "Always run tests before committing." }]
+			const contextFiles = [
+				{ path: "/repo/AGENTS.md", content: "Always run tests before committing.", tier: "project" as const },
+			]
 			const result = buildSystemPrompt({
 				tools,
 				env: testEnv,
@@ -381,8 +383,8 @@ describe("buildSystemPrompt", () => {
 
 		it("places global context files before project context files", () => {
 			const contextFiles = [
-				{ path: "/home/testuser/.config/kimchi/harness/AGENTS.md", content: "Global rule" },
-				{ path: "/repo/AGENTS.md", content: "Project rule" },
+				{ path: "/home/testuser/.config/kimchi/harness/AGENTS.md", content: "Global rule", tier: "global" as const },
+				{ path: "/repo/AGENTS.md", content: "Project rule", tier: "project" as const },
 			]
 			const result = buildSystemPrompt({
 				tools,
@@ -395,6 +397,29 @@ describe("buildSystemPrompt", () => {
 			expect(globalPos).toBeGreaterThan(-1)
 			expect(projectPos).toBeGreaterThan(-1)
 			expect(globalPos).toBeLessThan(projectPos)
+		})
+
+		it("renders multiple context files as distinct labeled sections, not one silent merge", () => {
+			const contextFiles = [
+				{ path: "/home/testuser/.config/kimchi/harness/AGENTS.md", content: "Global rule", tier: "global" as const },
+				{ path: "/repo/AGENTS.md", content: "Project rule", tier: "project" as const },
+			]
+			const result = buildSystemPrompt({
+				tools,
+				env: testEnv,
+				contextFiles,
+				mode: "single",
+			})
+			// One ### sub-heading per file, labeled by tier + a path-derived hash —
+			// never the literal path (no filesystem layout leaked into the prompt).
+			expect(result).toMatch(/### Global \([0-9a-f]{8}\)/)
+			expect(result).toMatch(/### Project \([0-9a-f]{8}\)/)
+			const guidelinesSection = result.slice(result.indexOf("## Project Guidelines"))
+			expect(guidelinesSection).not.toContain("/home/testuser")
+			expect(guidelinesSection).not.toContain("/repo/AGENTS.md")
+			// Two different files get two different hashes.
+			const hashes = [...result.matchAll(/### (?:Global|Project) \(([0-9a-f]{8})\)/g)].map((m) => m[1])
+			expect(new Set(hashes).size).toBe(2)
 		})
 
 		it("injects skills", () => {
@@ -637,7 +662,7 @@ describe("buildSystemPrompt", () => {
 		})
 
 		it("places environment section before project guidelines", () => {
-			const contextFiles = [{ path: "/repo/AGENTS.md", content: "custom rule" }]
+			const contextFiles = [{ path: "/repo/AGENTS.md", content: "custom rule", tier: "project" as const }]
 			const result = buildSystemPrompt({
 				tools,
 				env: testEnv,
@@ -720,7 +745,9 @@ describe("buildSystemPrompt", () => {
 		})
 
 		it("injects project context files", () => {
-			const contextFiles = [{ path: "/project/AGENTS.md", content: "Use TypeScript strict mode." }]
+			const contextFiles = [
+				{ path: "/project/AGENTS.md", content: "Use TypeScript strict mode.", tier: "project" as const },
+			]
 			const result = buildSystemPrompt({
 				tools,
 				env: testEnv,

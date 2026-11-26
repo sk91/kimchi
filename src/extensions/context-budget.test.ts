@@ -61,8 +61,10 @@ const BUDGET = {
 	/** buildSystemPrompt, headless variant (hasUserLoop: false — --print, json,
 	 *  piped IO; what TB2.1 exercises). Raised from 1120 for the #1474
 	 *  product-identity intro; measured 1132
-	 *  (includes the ## Language section). */
-	systemPromptHeadless: 1140,
+	 *  (includes the ## Language section). Raised from 1140 for the
+	 *  per-file ### <Tier> (<hash>) context-section labels (PR7); measured
+	 *  1145. */
+	systemPromptHeadless: 1150,
 	/** Sum of name + description chars across resources/skills frontmatter,
 	 * including create-skill (gh/glab guidance lives in behaviour bodies, not
 	 * bundled skills). Rendered as a Codex-style markdown catalog (name +
@@ -126,6 +128,7 @@ const CANONICAL_CONTEXT_FILES = [
 		content:
 			"# Fixture\n\nRepresentative project instruction file for budget measurement. " +
 			"Keep guidance short and high signal.",
+		tier: "project" as const,
 	},
 ]
 

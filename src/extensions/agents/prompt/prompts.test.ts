@@ -288,7 +288,7 @@ describe("contextFiles injection", () => {
 	it("includes ## Project Guidelines block when contextFiles are provided", () => {
 		const agent = getRequired(AGENT_GENERAL_PURPOSE)
 		const output = buildAgentPrompt(agent, FIXED_CWD, FIXED_ENV, PARENT_SYSTEM_PROMPT, {
-			contextFiles: [{ path: "/home/testuser/AGENTS.md", content: "# My Project\nSome guidelines." }],
+			contextFiles: [{ path: "/home/testuser/AGENTS.md", content: "# My Project\nSome guidelines.", tier: "project" }],
 		})
 		expect(output).toContain("## Project Guidelines")
 		expect(output).toContain("Some guidelines.")
@@ -297,7 +297,7 @@ describe("contextFiles injection", () => {
 	it("shifts top-level headings down one level in context file content", () => {
 		const agent = getRequired(AGENT_GENERAL_PURPOSE)
 		const output = buildAgentPrompt(agent, FIXED_CWD, FIXED_ENV, PARENT_SYSTEM_PROMPT, {
-			contextFiles: [{ path: "/repo/AGENTS.md", content: "# Top\n## Second\n### Third" }],
+			contextFiles: [{ path: "/repo/AGENTS.md", content: "# Top\n## Second\n### Third", tier: "project" }],
 		})
 		// # Top → ## Top, ## Second → ### Second, ### Third → #### Third
 		expect(output).toContain("## Top")
@@ -310,8 +310,8 @@ describe("contextFiles injection", () => {
 		const agent = getRequired(AGENT_GENERAL_PURPOSE)
 		const output = buildAgentPrompt(agent, FIXED_CWD, FIXED_ENV, PARENT_SYSTEM_PROMPT, {
 			contextFiles: [
-				{ path: "/AGENTS.md", content: "Root guidelines." },
-				{ path: "/home/testuser/projects/myapp/AGENTS.md", content: "Project guidelines." },
+				{ path: "/AGENTS.md", content: "Root guidelines.", tier: "project" },
+				{ path: "/home/testuser/projects/myapp/AGENTS.md", content: "Project guidelines.", tier: "project" },
 			],
 		})
 		expect(output).toContain("Root guidelines.")
