@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util"
 import { parseArgs as parsePiArgs } from "@earendil-works/pi-coding-agent"
 import { type CliMode, getCliModeArg, PROTOCOL_MODES } from "./cli-modes.js"
+import { resolveLaunchOverlayOptions } from "./config/launch-overlay.js"
 
 // Re-export the shared leaf-module helpers so existing callers can keep
 // importing them from cli-args.ts without touching their import paths.
@@ -33,6 +34,7 @@ const PRE_DISPATCH_VALUE_FLAG_SHORTS: Record<string, string | undefined> = {
 	name: "n",
 	"session-id": undefined,
 	"agent-dir": undefined,
+	"launch-overlay": undefined,
 }
 
 const PRE_DISPATCH_VALUE_FLAGS = new Set(
@@ -218,6 +220,12 @@ export const CLI_OPTIONS: Record<string, CliOptionDef> = {
 			"Override the agent dir (skills, agents, auth, settings) for this run (default: ~/.config/kimchi/harness)",
 		placeholder: "<path>",
 	},
+	"launch-overlay": {
+		type: "string",
+		description:
+			'Per-launch permissions/mcp overlay as inline JSON or a file path, e.g. {"permissions":{...},"mcp":{...}}',
+		placeholder: "<json-or-path>",
+	},
 	verbose: {
 		type: "boolean",
 		description: "Force verbose startup (overrides quietStartup)",
@@ -267,6 +275,7 @@ export interface SessionCliArgs {
 		"permissions-config"?: string
 		"bash-process-limit"?: string
 		"mcp-config"?: string
+		"launch-overlay"?: string
 		verbose?: boolean
 		"no-auto-update"?: boolean
 	}
@@ -286,6 +295,7 @@ export function populateCliArgs(args: string[]): void {
 	// Validate eagerly so an invalid operator value fails fast with a clear
 	// error instead of surfacing mid-session from the first bash call.
 	resolveBashProcessLimitSeconds(parsed)
+	parsed.options = resolveLaunchOverlayOptions(parsed.options)
 	cachedCliArgs = parsed
 }
 
@@ -349,6 +359,7 @@ export const CACHEABLE_OPTION_NAMES = [
 	"permissions-config",
 	"bash-process-limit",
 	"mcp-config",
+	"launch-overlay",
 	"verbose",
 	"no-auto-update",
 ] as const satisfies ReadonlyArray<keyof SessionCliArgs["options"]>
