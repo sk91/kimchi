@@ -65,6 +65,7 @@ import { isBunBinary } from "./env.js"
 import { discoverEnvironmentModels, installEnvironmentModels } from "./environment-models.js"
 import activityExtension from "./extensions/activity.js"
 import idleGcExtension from "./extensions/adaptive-gc.js"
+import agentDirFlagExtension from "./extensions/agent-dir-flag.js"
 import { installAgentEndWillRetryPatch } from "./extensions/agent-end-will-retry.js"
 import agentsExtension from "./extensions/agents/index.js"
 import { WEB_TOOL_MANAGED_FACTORIES } from "./extensions/agents/manager/subagent-web-tools.js"
@@ -920,6 +921,9 @@ async function cliMain(): Promise<void> {
 			// extensions/bash-background/session-policy.ts.
 			if (getCliModeArg(rawArgs) === "rpc") setBackgroundRunsPermitted(true)
 			const extensionFactories = [
+				// Pure flag registration, no behavior — first so pi's own unknown-flag
+				// validation sees --agent-dir before any session work starts.
+				agentDirFlagExtension,
 				// First so its session_start handler syncs project trust onto the
 				// settings watcher before any other handler reads settings.
 				settingsTrustSyncExtension,
