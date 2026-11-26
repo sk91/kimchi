@@ -32,6 +32,7 @@ const PRE_DISPATCH_VALUE_FLAG_SHORTS: Record<string, string | undefined> = {
 	theme: undefined,
 	name: "n",
 	"session-id": undefined,
+	"agent-dir": undefined,
 }
 
 const PRE_DISPATCH_VALUE_FLAGS = new Set(
@@ -209,6 +210,12 @@ export const CLI_OPTIONS: Record<string, CliOptionDef> = {
 	"mcp-config": {
 		type: "string",
 		description: "Use a specific MCP configuration file",
+		placeholder: "<path>",
+	},
+	"agent-dir": {
+		type: "string",
+		description:
+			"Override the agent dir (skills, agents, auth, settings) for this run (default: ~/.config/kimchi/harness)",
 		placeholder: "<path>",
 	},
 	verbose: {
