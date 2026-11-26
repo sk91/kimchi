@@ -140,6 +140,21 @@ describe("binary smoke tests", () => {
 		expect(result.stdout + result.stderr).not.toContain("Unknown option")
 	})
 
+	it("--launch-overlay does not get rejected by pi's own unknown-flag validation", () => {
+		// Same mechanism as --agent-dir: a pure kimchi invention with no
+		// upstream pi recognition and no pi.registerFlag() call, so
+		// createAgentSessionServices() rejects it as "Unknown option:
+		// --launch-overlay" once a real session starts, unless some extension
+		// registers it purely for validation purposes.
+		const result = runBinary({
+			args: ["--launch-overlay", '{"mcp":{"mcpServers":{}}}', "-p", "hello"],
+			extraEnv: { KIMCHI_API_KEY: "smoke-test-dummy" },
+			throwOnError: false,
+			timeoutMs: 25_000,
+		})
+		expect(result.stdout + result.stderr).not.toContain("Unknown option")
+	})
+
 	it("-r with an id is treated as a session selector", () => {
 		const missingSessionId = "019f1780-8034-7435-85aa-3e86037676ee"
 		const result = runBinary({

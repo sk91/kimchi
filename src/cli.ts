@@ -122,6 +122,7 @@ import { applyInteractiveWorkingIndicatorPatch } from "./extensions/interactive-
 import kimchiHooksAdapter from "./extensions/kimchi-hooks/index.js"
 import kimchiMinimalTintsExtension from "./extensions/kimchi-minimal-tints.js"
 import languageCommandExtension from "./extensions/language-command.js"
+import launchOverlayFlagExtension from "./extensions/launch-overlay-flag.js"
 import llmResponseLogExtension from "./extensions/llm-response-log.js"
 import codexCorrelationExtension from "./extensions/login/codex-correlation-extension.js"
 import { installKimchiOAuth } from "./extensions/login/flow.js"
@@ -922,8 +923,9 @@ async function cliMain(): Promise<void> {
 			if (getCliModeArg(rawArgs) === "rpc") setBackgroundRunsPermitted(true)
 			const extensionFactories = [
 				// Pure flag registration, no behavior — first so pi's own unknown-flag
-				// validation sees --agent-dir before any session work starts.
+				// validation sees --agent-dir/--launch-overlay before any session work starts.
 				agentDirFlagExtension,
+				launchOverlayFlagExtension,
 				// First so its session_start handler syncs project trust onto the
 				// settings watcher before any other handler reads settings.
 				settingsTrustSyncExtension,
