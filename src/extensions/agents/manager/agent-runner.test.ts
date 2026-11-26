@@ -2841,7 +2841,7 @@ describe("runAgent — includeContextFiles", () => {
 	})
 
 	it("passes context files to buildAgentPrompt when includeContextFiles is true", async () => {
-		const fakeContextFiles = [{ path: "/repo/AGENTS.md", content: "# Guidelines" }]
+		const fakeContextFiles = [{ path: "/repo/AGENTS.md", content: "# Guidelines", tier: "project" as const }]
 		mockLoadProjectContextFiles.mockReturnValue(fakeContextFiles)
 		mockGetAgentConfig.mockReturnValue(
 			makeAgentConfig({ name: "Plan", description: "Plan agent", includeContextFiles: true }),

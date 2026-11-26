@@ -12,7 +12,7 @@ import type { ModelRegistry } from "../orchestration/model-registry/index.js"
 import type { ModelRole } from "../orchestration/model-registry/types.js"
 import { isFermentOneshotRequested, isPrintModeEnabled } from "../print-mode.js"
 import { escapeClosingMarker } from "../steer-marker.js"
-import type { ContextFile } from "./context-files.js"
+import { type ContextFile, contextFileLabel } from "./context-files.js"
 import { renderSystemPromptBlocks, type SuppressibleSection } from "./system-prompt-blocks.js"
 
 export interface EnvironmentInfo {
@@ -562,8 +562,8 @@ function shiftHeadings(text: string): string {
 
 function formatProjectContext(contextFiles?: readonly ContextFile[]): string {
 	if (!contextFiles || contextFiles.length === 0) return ""
-	const combined = contextFiles.map((f) => shiftHeadings(f.content)).join("\n\n")
-	return `## Project Guidelines\n\n${combined}`
+	const sections = contextFiles.map((f) => `### ${contextFileLabel(f)}\n\n${shiftHeadings(f.content)}`).join("\n\n")
+	return `## Project Guidelines\n\n${sections}`
 }
 
 /** Cap on a skill's rendered description — the catalog carries routing info

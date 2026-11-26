@@ -420,7 +420,7 @@ describe("wireBehaviours — before_agent_start", () => {
 		const basePrompt = buildSystemPrompt({
 			tools: [{ name: "read", description: "Read file contents" }],
 			env: testEnv,
-			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 			mode: "single",
 		})
 
@@ -428,7 +428,7 @@ describe("wireBehaviours — before_agent_start", () => {
 		const promptAfterWiring = buildSystemPrompt({
 			tools: [{ name: "read", description: "Read file contents" }],
 			env: testEnv,
-			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 			mode: "single",
 		})
 
@@ -443,7 +443,7 @@ describe("wireBehaviours — before_agent_start", () => {
 		const sp = buildSystemPrompt({
 			tools: [{ name: "read", description: "Read file contents" }],
 			env: testEnv,
-			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule." }],
+			contextFiles: [{ path: "/repo/AGENTS.md", content: "Project rule.", tier: "project" }],
 			mode: "single",
 			sessionId: TEST_SESSION_ID,
 		})
