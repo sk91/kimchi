@@ -8,9 +8,21 @@
 
 import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
-import type { Skill } from "@earendil-works/pi-coding-agent"
-import { loadSkillsFromDir } from "@earendil-works/pi-coding-agent"
+import { join } from "node:path"
+import { loadSkillsFromDir, type Skill } from "@earendil-works/pi-coding-agent"
 import { resolveSkillRoots } from "../../../shared/skill-discovery/resolve-skill-roots.js"
+
+/**
+ * The agent dir `entry.ts` stamps onto `KIMCHI_CODING_AGENT_DIR` before any
+ * pi-mono code loads. Read directly rather than via pi-mono's `getAgentDir()`:
+ * that resolver derives its env var name from `APP_NAME`, which is `"kimchi"`
+ * only once `piConfig.name` is actually in scope — kimchi's own code reads
+ * `KIMCHI_CODING_AGENT_DIR` directly elsewhere (`resources/store.ts`,
+ * `auth/gateway-credentials.ts`) for the same reason.
+ */
+export function currentAgentDir(home: string): string {
+	return process.env.KIMCHI_CODING_AGENT_DIR || join(home, ".config", "kimchi", "harness")
+}
 
 /** Reject skill names that could traverse paths — alphanumeric, hyphens, underscores, dots, no leading dot, ≤128 chars. */
 function isUnsafeName(name: string): boolean {
@@ -43,7 +55,7 @@ export interface SkillListEntry {
  * loadSkillsFromDir; later dirs override earlier ones on name collisions.
  */
 export function resolveSkillPaths(cwd: string, home = homedir()): string[] {
-	return resolveSkillRoots({ cwd, homeDir: home }).map((root) => root.dir)
+	return resolveSkillRoots({ cwd, homeDir: home, agentDir: currentAgentDir(home) }).map((root) => root.dir)
 }
 
 /**

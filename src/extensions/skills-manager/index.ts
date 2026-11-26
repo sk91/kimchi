@@ -20,7 +20,9 @@ export interface SkillsManagerOptions {
 }
 
 export default function skillsManagerExtension(pi: ExtensionAPI, options?: SkillsManagerOptions): void {
-	const skillsDir = options?.skillsDir ?? join(homedir(), ".config", "kimchi", "harness", "skills")
+	const skillsDir =
+		options?.skillsDir ??
+		join(process.env.KIMCHI_CODING_AGENT_DIR || join(homedir(), ".config", "kimchi", "harness"), "skills")
 	// Bundled skills ship with the harness (resources/skills in dev, staged share
 	// dir in binaries) and are discoverable read-only — no home-dir deploy needed.
 	const bundled = resolveBundledSkillsDir()

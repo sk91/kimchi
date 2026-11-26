@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
-import { createContext } from "../__mocks__/context.js"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { createContext, createToolContext } from "../__mocks__/context.js"
 import { createExtensionApi } from "../__mocks__/extension-api.js"
 import skillsManagerExtension from "./index.js"
 
@@ -19,6 +19,25 @@ const ctxFor = (sessionId: string) =>
 	})
 
 describe("skillsManagerExtension", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
+	it("defaults skillsDir to <KIMCHI_CODING_AGENT_DIR>/skills, not homedir()", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "skills-manager-agentdir-"))
+		mkdirSync(join(dir, "skills", "probe"), { recursive: true })
+		writeFileSync(join(dir, "skills", "probe", "SKILL.md"), "# probe\n\nBody.")
+		vi.stubEnv("KIMCHI_CODING_AGENT_DIR", dir)
+
+		const { api, getRegisteredTools } = createExtensionApi()
+		skillsManagerExtension(api)
+		const skillView = getRegisteredTools().find((t) => t.name === "skill_view")
+		const res = (await skillView?.execute("call-1", { name: "probe" }, undefined, undefined, createToolContext())) as {
+			details?: { success?: boolean }
+		}
+		expect(res.details?.success).toBe(true)
+	})
+
 	it("registers skill_manage and skill_view tools by default", () => {
 		const { api, getRegisteredTools } = createExtensionApi()
 		skillsManagerExtension(api, { skillsDir: "/tmp/test-skills" })
