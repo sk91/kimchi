@@ -31,6 +31,7 @@
  */
 
 import { readFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { dirname } from "node:path"
 import { loadSkillsFromDir } from "@earendil-works/pi-coding-agent"
 import { isResourceEnabled } from "../../../resources/store.js"
@@ -52,7 +53,7 @@ import {
 	type SkillTriggerSource,
 	type TriggerOrigin,
 } from "../../skills-manager/skill-triggers.js"
-import type { SkillListEntry } from "./skill-loader.js"
+import { currentAgentDir, type SkillListEntry } from "./skill-loader.js"
 
 /** Kind → tier mapping as one declared table (mirrors the parent's tier
  *  labels), so adding a root kind means touching one place. */
@@ -132,6 +133,7 @@ export async function scanBriefSkills(
 			cwd,
 			...(options.homeDir !== undefined ? { homeDir: options.homeDir } : {}),
 			...(options.bundledDir !== undefined ? { bundledDir: options.bundledDir } : {}),
+			agentDir: currentAgentDir(options.homeDir ?? homedir()),
 		}).reverse()
 		// Shadowed names are excluded from the discovered (config/project)
 		// roots only — the same channels the parent's discovery gates

@@ -1,13 +1,31 @@
 import { mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { resetProjectScopeTrustForTests, setProjectScopeTrusted } from "../../../project-scope-trust.js"
-import { listAvailableSkillNames, preloadSkills } from "./skill-loader.js"
+import { listAvailableSkillNames, preloadSkills, resolveSkillPaths } from "./skill-loader.js"
 
 // The project-scope gate is module-global state; reset it after each test so
 // a trusted decision cannot leak into sibling tests.
 afterEach(resetProjectScopeTrustForTests)
+
+describe("resolveSkillPaths", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
+	it("resolves the agent-dir skill root from KIMCHI_CODING_AGENT_DIR, not homeDir", () => {
+		const cwd = join(tmpdir(), `kimchi-resolve-paths-${Date.now()}`)
+		mkdirSync(cwd, { recursive: true })
+		vi.stubEnv("KIMCHI_CODING_AGENT_DIR", "/isolated/agent-dir")
+
+		// The harness-kind root (derived from homeDir) stays present too — the
+		// agent-dir root is additional, not a replacement (global skills still
+		// resolve even for a seat with its own isolated agent dir).
+		const paths = resolveSkillPaths(cwd, "/some/other/home")
+		expect(paths).toContain(join("/isolated/agent-dir", "skills"))
+	})
+})
 
 describe("preloadSkills", () => {
 	it("returns empty array when no skill names requested", () => {
